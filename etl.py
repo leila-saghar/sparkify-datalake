@@ -22,8 +22,8 @@ from pyspark import SparkConf
 config = configparser.ConfigParser()
 config.read('dl.cfg')
 
-os.environ['AWS_ACCESS_KEY_ID']=config.get("AWS", "AWS_ACCESS_KEY_ID") # config['AWS_ACCESS_KEY_ID']
-os.environ['AWS_SECRET_ACCESS_KEY']=config.get("AWS", "AWS_SECRET_ACCESS_KEY")# config['AWS_SECRET_ACCESS_KEY']
+os.environ['AWS_ACCESS_KEY_ID']=config.get("AWS", "AWS_ACCESS_KEY_ID") 
+os.environ['AWS_SECRET_ACCESS_KEY']=config.get("AWS", "AWS_SECRET_ACCESS_KEY")
 destination_path = 's3a://sparkify-datalake-2020/'
 
 
