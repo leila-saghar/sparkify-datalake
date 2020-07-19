@@ -4,9 +4,9 @@
     In this project an ETL pipeline has been built to extract their data from S3, process them using Spark, and load the data back into S3 as a set of dimensional tables. This will allow their analytics team to continue finding insights in what songs their users are listening to.</p>
 
 ## Project Structure
-**dl.cfg** this files contains your AWS credential, currently has empty value for your AWS Secret Key and value, please set the right value before running the project
-**etl.py** the etl pipeline that extracts songs and log data from s3, transform them using Spark and loads them in Fact and dimension tables in S3 in Parquet format/
-**README.md* contains what you need to know about the project
+**dl.cfg** this files contains your AWS credential, currently has empty value for your AWS Secret Key and value, please set the right value before running the project<br>
+**etl.py** the etl pipeline that extracts songs and log data from s3, transform them using Spark and loads them in Fact and dimension tables in S3 in Parquet format<br>
+**README.md** contains what you need to know about the project<br>
 
 
 ## Source Data:
