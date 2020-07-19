@@ -1,19 +1,33 @@
-import os
-import pyspark
-#from pyspark.sql import Window
+############################################################################################################################
+#  Udacity Data Engineering Nanodegree - ASSIGNMENT-4
+#  
+#  Apply the knowledge of Spark and Data Lakes to build and ETL pipeline for a Data Lake hosted on Amazon S3
+#  The ETL Pipeline below extracts the data from S3 and process them using Spark 
+#  then load data in Parquet format back into S3 in a set of Fact and Dimension Tables. 
+#  Aparkify's analytics team use the data in the datalake for further insights in what songs their users are listening. 
+#  To get full benefit of Sparkm this pipeline will be submitted on AWS EMR Cluster.
+############################################################################################################################
 import configparser
 from datetime import datetime
-from pyspark.sql import SparkSession, Window
-from pyspark.sql.functions import udf, col, asc, last, desc
+import os
+import pyspark
+from pyspark.sql import Window
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import udf, col, last
+from pyspark.sql.functions import year, month, dayofmonth, hour, weekofyear, date_format
+from pyspark import SparkContext
+from pyspark import SparkConf
 
-######################################################################
+################ Get Credential from config file #################
 config = configparser.ConfigParser()
 config.read('dl.cfg')
 
 os.environ['AWS_ACCESS_KEY_ID']=config.get("AWS", "AWS_ACCESS_KEY_ID") # config['AWS_ACCESS_KEY_ID']
 os.environ['AWS_SECRET_ACCESS_KEY']=config.get("AWS", "AWS_SECRET_ACCESS_KEY")# config['AWS_SECRET_ACCESS_KEY']
-run_start_time = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
+destination_path = 's3a://sparkify-datalake-2020/'
 
+
+# create Spark Session
 def create_spark_session():        
     spark = SparkSession \
         .builder \
@@ -22,12 +36,14 @@ def create_spark_session():
     return spark
 
 def process_song_data(spark, songs_data):
-      
+    
+    ############################### SONGS TABLE ############################
+    
     # extract columns to create songs table and drop duplicate records
     songs_table = songs_data.select(["song_id", "title", "artist_id", "year", "duration"]).dropDuplicates()
 
     # write songs_table dataframe to parquet files partitioned by year and artistId    
-    songs_table_path = "s3a://udacity-dend-2020/songs_" + run_start_time
+    songs_table_path = destination_path + "songs"
     print("Writing songs_table parquet files to {}...".format(songs_table_path))
     start_st = datetime.now() 
     songs_table.write.mode("overwrite")\
@@ -36,7 +52,8 @@ def process_song_data(spark, songs_data):
     
     stop_st = datetime.now()
     print("...finished writing songs_table in {}.".format(stop_st - start_st))
-
+    
+    ############################### ARTISTS TABLE ############################
     # extract columns to create artists table
     artist_table = songs_data.select(["artist_Id", "artist_name", "artist_location", "artist_latitude", "artist_longitude"])\
         .dropDuplicates()\
@@ -46,7 +63,7 @@ def process_song_data(spark, songs_data):
         .withColumnRenamed("artist_longitude","longitude")
     
     # write artists table to parquet files
-    artist_table_path = "s3a://udacity-dend-test/artists_" + run_start_time
+    artist_table_path = destination_path+ "artists" 
     print("Writing artist_table parquet files to {}...".format(artist_table_path))
     
     artist_start_st = datetime.now()
@@ -54,9 +71,6 @@ def process_song_data(spark, songs_data):
         .parquet(artist_table_path)    
     artist_stop_st = datetime.now()
     print("...finished writing artist_table in {}.".format(artist_stop_st - artist_start_st))
-
-
-
 
 def process_log_data(spark, logs_path, songs_data):
         
@@ -94,7 +108,7 @@ def process_log_data(spark, logs_path, songs_data):
         .withColumnRenamed("newlevel","level") 
 
         # start writing user data in parquet format in S3        
-        user_table_path = "s3a://udacity-dend-test/users_" + run_start_time
+        user_table_path = destination_path + "users" 
 
         # Write DF to Spark parquet file (partitioned by year and artist_id)
         print("Writing user_table parquet files to {}...".format(user_table_path))
@@ -130,7 +144,7 @@ def process_log_data(spark, logs_path, songs_data):
         .withColumnRenamed("ts", "start_time")   
 
         
-        time_table_path = "s3a://udacity-dend-test/times_" + run_start_time        
+        time_table_path = destination_path + "time"         
         print("Writing time parquet files to {}...".format(time_table_path))
 
         # write time_table to parquet files in S3 partitioned by year and month    
@@ -169,7 +183,7 @@ def process_log_data(spark, logs_path, songs_data):
 
          
         
-        songplays_table_path = "s3a://udacity-dend-test/songplays_" + run_start_time        
+        songplays_table_path = destination_path + "songplays"         
         print("Writing songplays_data parquet files to {}...".format(songplays_table_path))
 
         # write songplays table to parquet files partitioned by year and month
@@ -180,17 +194,26 @@ def process_log_data(spark, logs_path, songs_data):
         songplays_stop_st = datetime.now()       
         print("...finished writing songplays_data in {}.".format(songplays_stop_st - songplays_start_st))        
 
-
+"""
+    entry point of the etl pipeline
+    1 - extract data from log_path and song_path and store them in a dataframe
+    2 - transform data, take care of duplicate data, null values and apply requested partitioning 
+    3 - load data back into S3, each table in a separate directory ( same S3 bucket).
+    ** process time is use as a postfix for each table  
+"""
 def main():
     spark = create_spark_session()
  
     logs_path = "s3a://udacity-dend/log_data/*/*/*.json"     
     song_path = "s3a://udacity-dend/song_data/A/B/C/*.json"
-
+    #song_path = 's3a://udacity-dend/song_data/*/*/*/*.json'
     # get filepath to log data file    
     # read song data file s3 and store in dataframe
+    print("read song data")
     songs_data = spark.read.json(song_path)
+    print("process_song_data")
     process_song_data(spark, songs_data)    
+    print("process_log_data")
     process_log_data(spark, logs_path, songs_data)
 
 
